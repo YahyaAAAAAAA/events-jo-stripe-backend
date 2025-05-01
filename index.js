@@ -3,7 +3,7 @@ const Stripe = require("stripe");
 const cors = require("cors");
 const bodyParser = require('body-parser');
 const admin = require('firebase-admin');
-const serviceAccount = require('./serviceAccountKey.json');
+const serviceAccount = require('serviceAccountKey.json');
 require("dotenv").config();
 
 const app = express();
