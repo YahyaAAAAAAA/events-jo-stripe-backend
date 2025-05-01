@@ -1,13 +1,24 @@
 const express = require("express");
 const Stripe = require("stripe");
 const cors = require("cors");
+const bodyParser = require('body-parser');
+const admin = require('firebase-admin');
+const serviceAccount = require('./serviceAccountKey.json');
 require("dotenv").config();
 
 const app = express();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+const endpointSecret = Stripe(process.env.WEBHOOK_SECRET_KEY);
 
 app.use(cors());
 app.use(express.json());
+
+// Firebase Admin Init
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+
+const db = admin.firestore();
 
 // Create PaymentIntent
 app.post("/create-payment-intent", async (req, res) => {
@@ -106,27 +117,58 @@ app.post("/create-checkout-session", async (req, res) => {
     }
   });
 
-  app.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {
-    const sig = req.headers['stripe-signature'];
-    const endpointSecret = 'whsec_XXXX';
-  
-    let event;
-  
-    try {
-      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-    } catch (err) {
-      console.error('Webhook error:', err.message);
-      return res.status(400).send(`Webhook Error: ${err.message}`);
+ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+  } catch (err) {
+    console.error('❌ Stripe signature verification failed:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // ✅ Listen for account.updated
+  if (event.type === 'account.updated') {
+    const account = event.data.object;
+    const accountId = account.id;
+    const email = account.email;
+    const detailsSubmitted = account.details_submitted;
+
+    console.log(`ℹ️ Stripe Connect account updated: ${accountId}`);
+
+    // Find the vendor in Firestore using account ID
+    const vendorSnapshot = await db.collection('owners')
+      .where('stripeAccountId', '==', accountId)
+      .limit(1)
+      .get();
+
+    if (vendorSnapshot.empty) {
+      console.warn(`⚠️ No vendor found with account ID: ${accountId}`);
+      return res.sendStatus(200);
     }
-  
-    // Handle event types
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
-      // TODO: store payment info in Firestore or notify admin
+
+    const vendorDoc = vendorSnapshot.docs[0];
+    const vendorRef = vendorDoc.ref;
+
+    if (detailsSubmitted) {
+      console.log(`✅ Vendor ${accountId} completed onboarding`);
+      await vendorRef.update({
+        onboarded: true,
+        onboardingStatus: 'complete'
+      });
+    } else {
+      console.log(`⚠️ Vendor ${accountId} has NOT completed onboarding`);
+      await vendorRef.update({
+        onboarded: false,
+        onboardingStatus: 'incomplete'
+      });
+
     }
-  
-    res.status(200).send();
-  });
+  }
+
+  res.sendStatus(200);
+});
 
 app.get("/", (req, res) => res.send("Stripe backend is running"));
 
