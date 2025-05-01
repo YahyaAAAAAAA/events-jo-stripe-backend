@@ -38,28 +38,30 @@ app.post("/create-connected-account", async (req, res) => {
       type: "account_onboarding",
     });
 
-    res.send({ accountId: account.id, onboardingUrl: accountLink.url });
+    // Return the link + account ID
+    res.send({ url: accountLink.url, accountId: account.id });
   } catch (error) {
     res.status(400).send({ error: error.message });
   }
 });
 
 // Admin transfers to vendor
-app.post("/transfer", async (req, res) => {
-  try {
-    const { amount, vendorAccountId } = req.body;
-
-    const transfer = await stripe.transfers.create({
-      amount,
-      currency: "usd",
-      destination: vendorAccountId,
-    });
-
-    res.send({ transferId: transfer.id });
-  } catch (error) {
-    res.status(400).send({ error: error.message });
-  }
-});
+app.post('/transfer', async (req, res) => {
+    try {
+      const { amount, destinationAccountId } = req.body;
+  
+      const transfer = await stripe.transfers.create({
+        amount: amount,
+        currency: 'usd',
+        destination: destinationAccountId, // Vendor's connected Stripe Account ID
+      });
+  
+      res.send({ success: true, transfer });
+    } catch (error) {
+      console.error('Transfer error:', error);
+      res.status(400).send({ error: error.message });
+    }
+  });
 
 // Refund to user
 app.post("/refund", async (req, res) => {
@@ -70,12 +72,13 @@ app.post("/refund", async (req, res) => {
       payment_intent: paymentIntentId,
     });
 
-    res.send({ refundId: refund.id });
+     res.send({ success: true, refund });
   } catch (error) {
     res.status(400).send({ error: error.message });
   }
 });
 
+//cheackout
 app.post("/create-checkout-session", async (req, res) => {
     try {
       const session = await stripe.checkout.sessions.create({
@@ -102,7 +105,28 @@ app.post("/create-checkout-session", async (req, res) => {
       res.status(400).send({ error: err.message });
     }
   });
+
+  app.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    const endpointSecret = 'whsec_XXXX';
   
+    let event;
+  
+    try {
+      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    } catch (err) {
+      console.error('Webhook error:', err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+  
+    // Handle event types
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+      // TODO: store payment info in Firestore or notify admin
+    }
+  
+    res.status(200).send();
+  });
 
 app.get("/", (req, res) => res.send("Stripe backend is running"));
 
