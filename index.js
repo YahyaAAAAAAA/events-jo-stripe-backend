@@ -141,6 +141,8 @@ app.post("/create-checkout-session", async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
 
+  console.log("🔥 Webhook triggered:", event.type);
+
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
   } catch (err) {
