@@ -8,7 +8,7 @@ require("dotenv").config();
 
 const app = express();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
-const endpointSecret = Stripe(process.env.WEBHOOK_SECRET_KEY);
+const endpointSecret = Stripe(process.env.STRIPE_WEBHOOK_SECRET);
 const serviceAccount = JSON.parse(process.env.FIREBASE_CONFIG);
 
 app.use(cors());
