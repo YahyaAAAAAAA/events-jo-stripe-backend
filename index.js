@@ -3,12 +3,12 @@ const Stripe = require("stripe");
 const cors = require("cors");
 const bodyParser = require('body-parser');
 const admin = require('firebase-admin');
-const serviceAccount = JSON.parse(process.env.FIREBASE_CONFIG);
 require("dotenv").config();
 
 const app = express();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 const endpointSecret = Stripe(process.env.WEBHOOK_SECRET_KEY);
+const serviceAccount = JSON.parse(process.env.FIREBASE_CONFIG);
 
 app.use(cors());
 app.use(express.json());
