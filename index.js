@@ -40,7 +40,8 @@ app.post("/create-payment-intent", async (req, res) => {
 
 // Create connected account (vendor)
 app.post("/create-connected-account", async (req, res) => {
-  const {userId} = req.body;
+  // const {userId} = req.body;
+  const userId = "OnFeLYY9Y4PnmmsoYKQsN7HIE8G3";
 
   if(!userId){
     return res.status(400).json({error:"Missing user id"});
