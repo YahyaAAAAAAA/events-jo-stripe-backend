@@ -138,6 +138,8 @@ app.post("/create-checkout-session", async (req, res) => {
   });
 
  app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+   console.log(`❤️❤️❤️`);
+   
   const sig = req.headers['stripe-signature'];
   let event;
 
@@ -176,4 +178,4 @@ app.post("/create-checkout-session", async (req, res) => {
 app.get("/", (req, res) => res.send("Stripe backend is running"));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on ${PORT}`));
+app.listen(PORT, () => console.log(`❤️ Server running on ${PORT}`));
