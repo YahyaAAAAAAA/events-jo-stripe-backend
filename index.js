@@ -55,11 +55,11 @@ app.post("/create-connected-account", async (req, res) => {
         },
        });
 
-       await db.collection('owners').doc(userId).update({
-        stripeAccountId: account.id,
-        onboarded: false,
-        onboardingStatus: 'incomplete',
-      });
+      //  await db.collection('owners').doc(userId).update({
+      //   stripeAccountId: account.id,
+      //   onboarded: false,
+      //   onboardingStatus: 'incomplete',
+      // });
 
     const accountLink = await stripe.accountLinks.create({
       account: account.id,
