@@ -3,6 +3,7 @@ const Stripe = require("stripe");
 const cors = require("cors");
 const bodyParser = require('body-parser');
 const admin = require('firebase-admin');
+const { error } = require("console");
 require("dotenv").config();
 
 const app = express();
@@ -39,8 +40,25 @@ app.post("/create-payment-intent", async (req, res) => {
 
 // Create connected account (vendor)
 app.post("/create-connected-account", async (req, res) => {
+  const {userId} = req.body;
+
+  if(!userId){
+    return res.status(400).json({error:"Missing user id"});
+  }
+
   try {
-    const account = await stripe.accounts.create({ type: "express" });
+    const account = await stripe.accounts.create(
+      { type: "express",
+        metadate: {
+          userId: userId,
+        },
+       });
+
+       await db.collection('owners').doc(userId).update({
+        stripeAccountId: account.id,
+        onboarded: false,
+        onboardingStatus: 'incomplete',
+      });
 
     const accountLink = await stripe.accountLinks.create({
       account: account.id,
@@ -131,40 +149,21 @@ app.post("/create-checkout-session", async (req, res) => {
   // ✅ Listen for account.updated
   if (event.type === 'account.updated') {
     const account = event.data.object;
-    const accountId = account.id;
-    const email = account.email;
-    const detailsSubmitted = account.details_submitted;
-
-    console.log(`ℹ️ Stripe Connect account updated: ${accountId}`);
-
-    // Find the vendor in Firestore using account ID
-    const vendorSnapshot = await db.collection('owners')
-      .where('stripeAccountId', '==', accountId)
-      .limit(1)
-      .get();
-
-    if (vendorSnapshot.empty) {
-      console.warn(`⚠️ No vendor found with account ID: ${accountId}`);
+    const userId = account.metadata?.userId; // ✅
+  
+    if (!userId) {
+      console.warn(`⚠️ No userId in metadata for account ${account.id}`);
       return res.sendStatus(200);
     }
-
-    const vendorDoc = vendorSnapshot.docs[0];
-    const vendorRef = vendorDoc.ref;
-
-    if (detailsSubmitted) {
-      console.log(`✅ Vendor ${accountId} completed onboarding`);
-      await vendorRef.update({
-        onboarded: true,
-        onboardingStatus: 'complete'
-      });
-    } else {
-      console.log(`⚠️ Vendor ${accountId} has NOT completed onboarding`);
-      await vendorRef.update({
-        onboarded: false,
-        onboardingStatus: 'incomplete'
-      });
-
-    }
+  
+    const onboarded = account.details_submitted;
+  
+    await db.collection('owners').doc(userId).update({
+      onboarded,
+      onboardingStatus: onboarded ? 'complete' : 'incomplete',
+    });
+  
+    console.log(`📦 Vendor ${userId} onboarding status updated.`);
   }
 
   res.sendStatus(200);
