@@ -49,8 +49,11 @@ app.post("/create-connected-account", async (req, res) => {
 
   try {
     const account = await stripe.accounts.create(
-      { type: "express",
-     
+      { 
+        type: "express",
+        metadata: {
+          userId: userId,
+        },
        });
 
       //  await db.collection('owners').doc(userId).update({
