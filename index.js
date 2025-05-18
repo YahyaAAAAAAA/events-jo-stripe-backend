@@ -168,18 +168,26 @@ app.post('/transfer', async (req, res) => {
 // Refund to user
 app.post("/refund", async (req, res) => {
   try {
-    const { paymentIntentId,orderId } = req.body;
+    const { paymentIntentId,orderId,cancelledBy,amount } = req.body;
 
     if (!paymentIntentId) {
       return res.status(400).json({ error: 'Missing paymentIntentId' });
     }
 
+    // Calculate refund amount
+    let refundAmount = amount;
+    if (cancelledBy === 'user') {
+      console.log('ddddddddddddd');
+      refundAmount = Math.round(amount * 0.9); // 90% refund
+    }
+
     const refund = await stripe.refunds.create({
       payment_intent: paymentIntentId,
+      amount:refundAmount * 100,
     });
 
     await db.collection('orders').doc(orderId).update({
-      status: 'unpaid',
+      status: 'refunded',
      });
 
 
@@ -253,6 +261,7 @@ app.get('/payouts', async (req, res) => {
 });
 
 const path = require('path');
+const { ref } = require("process");
 
 // Serve static files from /public
 app.use(express.static(path.join(__dirname, 'public')));
