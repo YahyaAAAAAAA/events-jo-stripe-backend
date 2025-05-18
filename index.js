@@ -8,9 +8,11 @@ require("dotenv").config();
 
 const app = express();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-const serviceAccount = JSON.parse(process.env.FIREBASE_CONFIG);
-// const serviceAccount = require('./serviceAccountKey.json');
+const isLocal = false;
+
+const endpointSecret = isLocal ? process.env.STRIPE_LOCALHOST_KEY  :  process.env.STRIPE_WEBHOOK_SECRET;
+const serviceAccount = isLocal ? require('./serviceAccountKey.json') : JSON.parse(process.env.FIREBASE_CONFIG);
+const domainUrl = isLocal ? 'http://localhost:5000' : 'https://eventsjostripebackend.onrender.com';
 
 // Firebase Admin Init
 admin.initializeApp({
@@ -123,7 +125,7 @@ app.post("/create-connected-account", async (req, res) => {
     const accountLink = await stripe.accountLinks.create({
       account: account.id,
       refresh_url: "https://example.com/reauth",
-      return_url: "https://example.com/return",
+      return_url: `${domainUrl}/return.html`,
       type: "account_onboarding",
     });
 
@@ -219,8 +221,8 @@ app.post("/create-checkout-session", async (req, res) => {
           },
         ],
         mode: 'payment',
-        success_url: 'https://example.com/success',
-        cancel_url: 'https://example.com/cancel',
+       success_url: `${domainUrl}/success.html?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${domainUrl}/cancel.html?session_id={CHECKOUT_SESSION_ID}`,
       });
   
       res.send({ url: session.url });
@@ -249,6 +251,11 @@ app.get('/payouts', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+const path = require('path');
+
+// Serve static files from /public
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.get("/", (req, res) => res.send("Stripe backend is running"));
 

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Payment Successful</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      --success-green: #306BDD;
+      --background: #F1F6FF;
+    }
+
+    @font-face {
+      font-family: 'Abel';
+      src: url('./fonts/Abel-Regular.ttf') format('truetype');
+      font-weight: 400;
+    }
+
+    @font-face {
+      font-family: 'Gugi';
+      src: url('./fonts/Gugi-Regular.ttf') format('truetype');
+      font-weight: 700;
+    }
+
+    body {
+      font-family: 'Abel', sans-serif;
+      background: linear-gradient(-45deg, #F1F6FF, #F1F6FF,#a7c0f1, #F1F6FF, #F1F6FF);
+      background-size: 400% 400%;
+      animation: bg-animate 5s ease-in-out infinite;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    @keyframes bg-animate {
+      0% {
+        background-position: 0% 50%;
+      }
+      50% {
+        background-position: 100% 50%;
+      }
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    .container {
+      text-align: center;
+    }
+
+    .logo {
+      width: 90px;
+      height: 90px;
+      background-color: var(--success-green);
+      border-radius: 12%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Gugi', cursive;
+      font-size: 4rem;
+      color: white;
+      margin: 0 auto 1.5rem auto;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .card {
+      background: white;
+      padding: 2rem 3rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    .card h1 {
+      color: black;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .card p {
+      font-size: 1rem;
+      color: #444;
+      margin-bottom: 2rem;
+    }
+
+    .card .btn {
+      background-color: var(--success-green);
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    .card .btn:hover {
+      background-color: #2552ad;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">Ej</div>
+
+    <div class="card">
+      <h1>❌ Payment Cancelled</h1>
+      <p>You have not been charged.</p>
+      <a href="#" class="btn" onclick="window.close()">Return to App</a>
+    </div>
+  </div>
+</body>
+</html>
