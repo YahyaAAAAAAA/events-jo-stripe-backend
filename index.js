@@ -10,7 +10,8 @@ const app = express();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 const isLocal = false;
 
-const endpointSecret = isLocal ? process.env.STRIPE_LOCALHOST_KEY  :  process.env.STRIPE_WEBHOOK_CONNECT_SECRET;
+const endpointSecretPlatform = isLocal ? process.env.STRIPE_LOCALHOST_KEY  :  process.env.STRIPE_WEBHOOK_SECRET;
+const endpointSecretConnect = isLocal ? process.env.STRIPE_LOCALHOST_KEY  :  process.env.STRIPE_WEBHOOK_CONNECT_SECRET;
 const serviceAccount = isLocal ? require('./serviceAccountKey.json') : JSON.parse(process.env.FIREBASE_CONFIG);
 const domainUrl = isLocal ? 'http://localhost:5000' : 'https://eventsjostripebackend.onrender.com';
 
@@ -23,70 +24,79 @@ const db = admin.firestore();
 
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   console.log("🔥 Webhook triggered");
-  
+
   const sig = req.headers['stripe-signature'];
   let event;
-  
 
- try {
-   event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-   console.log("Type: ",event.type);
- } catch (err) {
-   console.error('❌ Stripe signature verification failed:', err.message);
-   return res.status(400).send(`Webhook Error: ${err.message}`);
- }
+  // Try to construct with platform secret first, fallback to connect
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecretPlatform);
+    console.log("📦 Verified with PLATFORM secret");
+  } catch (errPlatform) {
+    try {
+      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecretConnect);
+      console.log("📦 Verified with CONNECT secret");
+    } catch (errConnect) {
+      console.error('❌ Stripe signature verification failed for both secrets:', errConnect.message);
+      return res.status(400).send(`Webhook Error: ${errConnect.message}`);
+    }
+  }
 
- // ✅ Listen for account.updated
- if (event.type === 'account.updated') {
-  console.log(`🧾 enter account update`);
-  const account = event.data.object;
-  const metadata = account.metadata || {};
-  const userId = metadata.userId;
- 
-   if (!userId) {
-     console.warn(`⚠️ No userId in metadata for account ${account.id}`);
-     return res.sendStatus(200);
-   }
- 
-   const onboarded = account.details_submitted;
- 
-   // Ensure the document exists before updating
-   const ownerRef = db.collection('owners').doc(userId);
-   const ownerDoc = await ownerRef.get();
-   if (!ownerDoc.exists) {
-     console.warn(`⚠️ Owner document for userId ${userId} does not exist.`);
-     return res.sendStatus(200);
-   }
- 
-   await ownerRef.update({
-     onboarded,
-     onboardingStatus: onboarded ? 'complete' : 'incomplete',
-   });
- 
-   console.log(`📦 Vendor ${userId} onboarding status updated.`);
- }
+  console.log("✅ Type:", event.type);
+  const isConnected = !!event.account;
+  console.log(`🌍 Source: ${isConnected ? 'Connected account: ' + event.account : 'Platform account'}`);
 
- // ✅ Listen for checkout.session.completed
- if (event.type === 'checkout.session.completed') {
-  console.log(`💵 checkout session completed`);
+  // Handle account.updated (from connected accounts)
+  if (event.type === 'account.updated') {
+    console.log(`🧾 Enter account update`);
 
-  const session = event.data.object;
-  const orderId = session.metadata?.orderId;
- 
-   if (!orderId) {
-     console.warn(`⚠️ No userId in metadata for account ${session.id}`);
-     return res.sendStatus(200);
-   }
- 
-   await db.collection('orders').doc(orderId).update({
-    status: 'pending',
-    paymentIntentId: session.payment_intent
-   });
- 
-   console.log(`📦 Order ${orderId} status updated.`);
- }
+    const account = event.data.object;
+    const metadata = account.metadata || {};
+    const userId = metadata.userId;
 
- res.send();
+    if (!userId) {
+      console.warn(`⚠️ No userId in metadata for account ${account.id}`);
+      return res.sendStatus(200);
+    }
+
+    const onboarded = account.details_submitted;
+
+    const ownerRef = db.collection('owners').doc(userId);
+    const ownerDoc = await ownerRef.get();
+    if (!ownerDoc.exists) {
+      console.warn(`⚠️ Owner document for userId ${userId} does not exist.`);
+      return res.sendStatus(200);
+    }
+
+    await ownerRef.update({
+      onboarded,
+      onboardingStatus: onboarded ? 'complete' : 'incomplete',
+    });
+
+    console.log(`📦 Vendor ${userId} onboarding status updated.`);
+  }
+
+  // Handle checkout.session.completed (from platform)
+  if (event.type === 'checkout.session.completed') {
+    console.log(`💵 Checkout session completed`);
+
+    const session = event.data.object;
+    const orderId = session.metadata?.orderId;
+
+    if (!orderId) {
+      console.warn(`⚠️ No orderId in metadata for session ${session.id}`);
+      return res.sendStatus(200);
+    }
+
+    await db.collection('orders').doc(orderId).update({
+      status: 'pending',
+      paymentIntentId: session.payment_intent
+    });
+
+    console.log(`📦 Order ${orderId} status updated.`);
+  }
+
+  res.send();
 });
 
 app.use(cors());
