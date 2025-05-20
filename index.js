@@ -39,7 +39,8 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
  if (event.type === 'account.updated') {
   console.log(`🧾 enter account update`);
   const account = event.data.object;
-   const userId = account.metadata?.userId;
+  const metadata = account.metadata || {};
+  const userId = metadata.userId;
  
    if (!userId) {
      console.warn(`⚠️ No userId in metadata for account ${account.id}`);
@@ -48,7 +49,15 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
  
    const onboarded = account.details_submitted;
  
-   await db.collection('owners').doc(userId).update({
+   // Ensure the document exists before updating
+   const ownerRef = db.collection('owners').doc(userId);
+   const ownerDoc = await ownerRef.get();
+   if (!ownerDoc.exists) {
+     console.warn(`⚠️ Owner document for userId ${userId} does not exist.`);
+     return res.sendStatus(200);
+   }
+ 
+   await ownerRef.update({
      onboarded,
      onboardingStatus: onboarded ? 'complete' : 'incomplete',
    });
