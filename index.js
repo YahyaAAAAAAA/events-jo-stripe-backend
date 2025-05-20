@@ -10,7 +10,7 @@ const app = express();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 const isLocal = false;
 
-const endpointSecret = isLocal ? process.env.STRIPE_LOCALHOST_KEY  :  process.env.STRIPE_WEBHOOK_SECRET;
+const endpointSecret = isLocal ? process.env.STRIPE_LOCALHOST_KEY  :  process.env.STRIPE_WEBHOOK_CONNECT_SECRET;
 const serviceAccount = isLocal ? require('./serviceAccountKey.json') : JSON.parse(process.env.FIREBASE_CONFIG);
 const domainUrl = isLocal ? 'http://localhost:5000' : 'https://eventsjostripebackend.onrender.com';
 
