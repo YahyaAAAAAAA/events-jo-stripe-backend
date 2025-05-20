@@ -22,7 +22,7 @@ admin.initializeApp({
 const db = admin.firestore();
 
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  console.log("🔥 Webhook triggered:");
+  console.log("🔥 Webhook triggered");
   
   const sig = req.headers['stripe-signature'];
   let event;
@@ -30,6 +30,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 
  try {
    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+   console.log("Type: ",event.type);
  } catch (err) {
    console.error('❌ Stripe signature verification failed:', err.message);
    return res.status(400).send(`Webhook Error: ${err.message}`);
